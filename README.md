@@ -61,7 +61,7 @@ pip install -r requirements/dev.txt
 Create a `.env` file in the project root:
 
 ```text
-BLOG_ENV_ID=local
+ENV_ID=local
 ```
 
 Add any other variables your project needs in the same file (for example a secret
