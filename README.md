@@ -197,15 +197,15 @@ published versus draft posts.
 
 **Post list with filters open**
 
-![Post list with filters](docs/screenshots/post-list-filters.png)
+![Post list with filters](docs/screenshots/posts.png)
 
 **Post edit page**
 
-![Post edit page](docs/screenshots/post-edit.png)
+![Post edit page](docs/screenshots/postsedit.png)
 
 **User list**
 
-![User list](docs/screenshots/user-list.png)
+![User list](docs/screenshots/users.png)
 
 ## Checking SQL queries
 
