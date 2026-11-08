@@ -10,6 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
+
 from settings.conf import *
 
 # ----------------------------------------------
@@ -23,12 +27,14 @@ ASGI_APPLICATION = 'settings.asgi.application'
 AUTH_USER_MODEL = "auths.User"
 
 
-
 # ----------------------------------------------
 # Apps
 #
 
 DJANGO_AND_THIRD_PARTY_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -56,7 +62,7 @@ MIDDLEWARE = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -67,8 +73,6 @@ TEMPLATES = [
         },
     },
 ]
-
-
 
 
 # Password validation
@@ -111,3 +115,116 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ----------------------------------------------
+# Unfold admin
+
+UNFOLD = {
+    "SITE_TITLE": "Blog Admin",
+    "SITE_HEADER": "Blog API",
+    "SITE_SUBHEADER": "Content administration",
+    "SITE_SYMBOL": "article",
+    "SITE_DROPDOWN": [
+        {
+            "icon": "code",
+            "title": _("GitHub repo"),
+            "link": "https://github.com/oceandrive8/blog-api",
+        },
+        {
+            "icon": "menu_book",
+            "title": _("Unfold docs"),
+            "link": "https://unfoldadmin.com/docs/",
+        },
+    ],
+    "ENVIRONMENT": "apps.blog.callbacks.environment_callback",
+    "DASHBOARD_CALLBACK": "apps.blog.callbacks.dashboard_callback",
+    "COMMAND": {"search_models": True},  # Cmd+K / Ctrl+K
+        "COLORS": {
+        "primary": {
+            "50": "oklch(97% 0.014 254.604)",
+            "100": "oklch(93.2% 0.032 255.585)",
+            "200": "oklch(88.2% 0.059 254.128)",
+            "300": "oklch(80.9% 0.105 251.813)",
+            "400": "oklch(70.7% 0.165 254.624)",
+            "500": "oklch(62.3% 0.214 259.815)",
+            "600": "oklch(54.6% 0.245 262.881)",
+            "700": "oklch(48.8% 0.243 264.376)",
+            "800": "oklch(42.4% 0.199 265.638)",
+            "900": "oklch(37.9% 0.146 265.522)",
+            "950": "oklch(28.2% 0.091 267.935)",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": _("Overview"),
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                    },
+                ],
+            },
+            {
+                "title": _("Content"),
+                "items": [
+                    {
+                        "title": _("Posts"),
+                        "icon": "article",
+                        "link": reverse_lazy("admin:blog_post_changelist"),
+                        "badge": "apps.blog.callbacks.drafts_badge",
+                    },
+                    {
+                        "title": _("Comments"),
+                        "icon": "chat",
+                        "link": reverse_lazy("admin:blog_comment_changelist"),
+                    },
+                    {
+                        "title": _("Categories"),
+                        "icon": "category",
+                        "link": reverse_lazy("admin:blog_category_changelist"),
+                    },
+                    {
+                        "title": _("Tags"),
+                        "icon": "sell",
+                        "link": reverse_lazy("admin:blog_tag_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Users & Access"),
+                "items": [
+                    {
+                        "title": _("Users"),
+                        "icon": "person",
+                        "link": reverse_lazy("admin:auths_user_changelist"),
+                        "permission": "apps.blog.callbacks.is_superuser",
+                    },
+                    {
+                        "title": _("Groups"),
+                        "icon": "group",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                        "permission": "apps.blog.callbacks.is_superuser",
+                    },
+                ],
+            },
+        ],
+    },
+    "TABS": [
+        {
+            "models": ["blog.post"],
+            "items": [
+                {"title": _("All"), "link": "apps.blog.callbacks.all_posts_link"},
+                {
+                    "title": _("Published"),
+                    "link": "apps.blog.callbacks.published_posts_link",
+                },
+                {"title": _("Drafts"), "link": "apps.blog.callbacks.draft_posts_link"},
+            ],
+        },
+    ],
+}
