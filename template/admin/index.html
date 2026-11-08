@@ -1,0 +1,40 @@
+{% extends 'admin/base.html' %}
+{% load i18n unfold %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+  {% component "unfold/components/container.html" %}
+
+    {# 1. Cards. Layout uses inline CSS so it works whatever classes Unfold's stylesheet includes. #}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
+      {% for card in cards %}
+        {% component "unfold/components/card.html" with title=card.title %}
+          <p style="font-size:2rem;font-weight:600;line-height:1.2;">{{ card.value }}</p>
+        {% endcomponent %}
+      {% endfor %}
+    </div>
+
+    {# 2. Bar chart: posts per category #}
+    <div style="margin-bottom:1.5rem;">
+      {% component "unfold/components/card.html" with title="Posts per category" %}
+        {% component "unfold/components/chart/bar.html" with data=chart_data height=300 %}{% endcomponent %}
+      {% endcomponent %}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
+      {# 3. Table: top 5 authors #}
+      {% component "unfold/components/card.html" with title="Top 5 authors" %}
+        {% component "unfold/components/table.html" with table=authors_table %}{% endcomponent %}
+      {% endcomponent %}
+
+      {# 4. Progress bars: published vs drafts #}
+      {% component "unfold/components/card.html" with title="Published vs drafts" %}
+        {% for item in progress %}
+          {% component "unfold/components/progress.html" with title=item.title value=item.value %}{% endcomponent %}
+        {% endfor %}
+      {% endcomponent %}
+    </div>
+
+  {% endcomponent %}
+{% endblock %}
