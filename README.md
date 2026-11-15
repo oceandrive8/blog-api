@@ -220,3 +220,94 @@ rows per page and compare the number of queries. It should be the same.
 - Sorted imports and clear naming
 - Type hints
 - `self.stdout.write` instead of `print` in management commands
+
+
+
+## Queries (Homework 3)
+
+The file `apps/blog/queries.py` holds 50 Django ORM queries, one function for each. The command `queries` runs them, shows the result and counts the SQL queries that Django sent to the database.
+
+### Realistic dates
+
+The `seed` command spreads the data over one year:
+
+- every post gets a random `created_at` in the last 365 days;
+- about 30% of posts get `updated_at` 1-30 days after `created_at` (never later than now), and the other posts have `updated_at` equal to `created_at`;
+- every comment gets a random `created_at` between its post's `created_at` and now.
+
+The dates are set in memory after `bulk_create` and saved with one `bulk_update`, because `auto_now_add` and `auto_now` overwrite any value during `bulk_create`.
+
+### Running the queries
+
+Fill the database first:
+
+```bash
+python manage.py seed --clear
+```
+
+| Command | What it does |
+|---|---|
+| `python manage.py queries` | Runs all queries except 40-44 (they change the data) |
+| `python manage.py queries --number 31` | Runs only query 31. This also works for 40-44 |
+| `python manage.py queries --number 6 --sql` | Also prints the SQL that Django sent to the database |
+
+An unknown number gives a `CommandError`.
+
+On an empty database:
+
+```bash
+python manage.py migrate
+python manage.py seed
+python manage.py queries
+python manage.py queries --number 41
+```
+
+### Output
+
+For every query the command prints the number, the function name, the number of SQL queries and the result. For a list or a QuerySet it prints the first 5 rows and the total number of rows. For model objects it also prints the values added with `annotate()`.
+
+```text
+$ python manage.py queries --number 31
+
+31 categories_with_post_count - 1 SQL query
+Python {'post_count': 24}
+Cybersecurity {'post_count': 15}
+Django {'post_count': 13}
+DevOps {'post_count': 11}
+Databases {'post_count': 10}
+(8 rows)
+```
+
+```text
+$ python manage.py queries --number 6 --sql
+
+6 has_drafts - 1 SQL query
+SELECT 1 AS "a" FROM "blog_post" WHERE "blog_post"."status" = 'draft' LIMIT 1
+True
+```
+
+### Sample arguments
+
+Queries that take arguments (a slug, an email, a number of days) get sample values from the dict `QUERY_ARGUMENTS` in `apps/blog/management/commands/queries.py`. Values that must exist in the database, such as an author's email, are taken from the database right before the query runs, so they are not counted as part of the query.
+
+### The 50 queries
+
+| Level | Queries | Topic |
+|---|---|---|
+| 1 | 1-7 | `filter`, `exclude`, `order_by`, slicing, `first`, `count`, `exists` |
+| 2 | 8-14 | Field lookups (`icontains`, `iendswith`, `isnull`, `in`, `year`, `range`) |
+| 3 | 15-21 | Queries across relations, `distinct`, multi-valued relations |
+| 4 | 22-26 | `Q` and `F` objects |
+| 5 | 27-28 | `values`, `values_list`, `Coalesce` |
+| 6 | 29-30 | `aggregate` |
+| 7 | 31-36 | `annotate`, `GROUP BY`, `HAVING` |
+| 8 | 37-39 | `Concat`, `TruncMonth`, `Case` / `When` |
+| 9 | 40-44 | `get_or_create`, `update`, `add`, `delete` |
+| 10 | 45-47 | `select_related`, `prefetch_related`, `Prefetch` |
+| 11 | 48-50 | `Subquery`, `OuterRef`, `Exists` |
+
+### Notes
+
+- Queries 40-44 **change the data**. The command runs them only with `--number`. To get fresh data, run `python manage.py seed --clear`.
+- Every read query (1-39 and 48-50) makes exactly 1 SQL query. Queries 45, 46 and 47 are limited to 1, 2 and 2 SQL queries, and they use `select_related` and `prefetch_related` to avoid the N+1 problem.
+- `settings/env/local.py` logs every SQL query to the terminal, so you may see extra SQL lines in the command output. This is normal.
