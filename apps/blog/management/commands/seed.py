@@ -1,5 +1,6 @@
 import random
 import time
+from datetime import datetime,timedelta
 from typing import Any
 
 
@@ -7,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand,CommandError, CommandParser
 from django.db import transaction
+from django.utils import timezone
 from django.utils.text import slugify
 from faker import Faker
 
@@ -27,8 +29,12 @@ TITLE_WORDS=6
 MIN_COMMENT_SENTENCES=1
 MAX_COMMENT_SENTENCES=3
 BATCH_SIZE=500
-STATUS_PUBLISHED="published"
-STATUS_DRAFT="draft"
+
+
+POST_AGE_DAYS=365
+EDITED_RATIO=0.3
+MIN_EDIT_DELAY_DAYS=1
+MAX_EDIT_DELAY_DAYS=30
 
 
 CATEGORY_NAMES=["Python", "Django", "DevOps", "Testing", "Frontend", 
@@ -51,6 +57,9 @@ def unique_slug(base:str, used:set[str])->str:
     used.add(slug)
     return slug
 
+def random_moment(start:datetime, end: datetime)->datetime:
+    seconds=int((end-start).total_seconds())
+    return start+timedelta(seconds=random.randint(0, max(seconds, 0)))
 
 class Command(BaseCommand):
     help = "Fill the database with fake data."
@@ -72,6 +81,7 @@ class Command(BaseCommand):
 
         started=time.perf_counter()
         self.fake=Faker()
+        now=timezone.now()
 
         with transaction.atomic():
             if options["clear"]:
@@ -86,20 +96,25 @@ class Command(BaseCommand):
                 raise CommandError("Posts and comments are required but there is no users. use --users")
 
                 
-            posts_created=self._create_posts(posts_count, user_ids)
+            posts=self._create_posts(posts_count, user_ids, now)
 
-
-            published_ids=list(Post.objects.filter(status=STATUS_PUBLISHED).values_list("id", flat=True))
-            if comments_count and not published_ids:
+            #Published posts of this one taking from memory
+            published_posts=[p for p in posts if p.status==Post.Status.PUBLISHED]
+            if comments_count and not published_posts:
+                #Fallback:this run made no published posts 
+                #no use published posts that are alreday exist in db
+                published_posts=list(Post.objects.filter(status=Post.Status.PUBLISHED))
+            if comments_count and not published_posts:
                 raise CommandError("Comments required but there are no published posts. Publish posts first")
-            comments_created=self._create_comments(comments_count, user_ids, published_ids)
+            
+            comments_created=self._create_comments(comments_count, user_ids, published_posts, now)
 
 
         elapsed=time.perf_counter()-started
         self.stdout.write(f"Users:  {users_created:>5} created")
         self.stdout.write(f"Categories:  {categories_created:>5} created")
         self.stdout.write(f"Tags:  {tags_created:>5} created")
-        self.stdout.write(f"Posts:  {posts_created:>5} created")
+        self.stdout.write(f"Posts:  {len(posts):>5} created")
         self.stdout.write(f"Comments:  {comments_created:>5} created")
         self.stdout.write(self.style.SUCCESS(f"Done in {elapsed:.2f} seconds"))
 
@@ -141,9 +156,9 @@ class Command(BaseCommand):
         new=[Tag(name=n, slug=slugify(n)) for n in TAG_NAMES if slugify(n) not in existing]
         return len(Tag.objects.bulk_create(new))
 
-    def _create_posts(self, count:int, user_ids: list[int])->int:
-        if count==0:
-            return 0
+    def _create_posts(self, count: int, user_ids: list[int], now: datetime) -> list[Post]:
+        if count == 0:
+            return []
 
         used_slugs=set(Post.objects.values_list("slug", flat=True))
         categories=list(Category.objects.all())
@@ -158,27 +173,52 @@ class Command(BaseCommand):
                 title=title,
                 slug=unique_slug(slugify(title), used_slugs),
                 body="\n\n".join(self.fake.paragraphs(nb=BODY_PARAGRAPHS)),
-                status=STATUS_PUBLISHED if random.random()<PUBLISHED_RATIO else STATUS_DRAFT,
+                status=Post.Status.PUBLISHED if random.random()<PUBLISHED_RATIO else Post.Status.DRAFT,
                 category=random.choice(categories) if has_category else None,
             ))
         created=Post.objects.bulk_create(posts, batch_size=BATCH_SIZE)
+        self._set_post_dates(created, now)
+
         if tags:
             for post in created:
                 amount=random.randint(0, min(MAX_TAGS_PER_POST, len(tags)))
                 post.tags.set(random.sample(tags, amount))
-        return len(created)
+        return created
+
+    def _set_post_dates(self, posts:list[Post], now:datetime)->None:
+        """Giving every post realistic dates"""
+        oldest=now-timedelta(days=POST_AGE_DAYS)
+
+        for post in posts:
+            post.created_at=random_moment(oldest, now)
+            post.updated_at=post.created_at
+
+            if random.random()<EDITED_RATIO and post.created_at + timedelta(days=MIN_EDIT_DELAY_DAYS) <= now:
+                latest_edit = min(
+                    post.created_at + timedelta(days=MAX_EDIT_DELAY_DAYS), now,
+                    )
+                post.updated_at = random_moment(
+                    post.created_at + timedelta(days=MIN_EDIT_DELAY_DAYS), latest_edit,
+                )
+        Post.objects.bulk_update(posts, ["created_at", "updated_at"], batch_size=BATCH_SIZE)
 
 
-    def _create_comments(self, count: int, user_ids: list[int], post_ids: list[int])->int:
+    def _create_comments(self, count: int, user_ids: list[int], posts: list[Post], now:datetime)->int:
+        if count==0:
+            return 0
         comments=[
             Comment(
-                post_id=random.choice(post_ids),
+                post=random.choice(posts),
                 author_id=random.choice(user_ids),
                 body=" ".join(self.fake.sentences(nb=random.randint(MIN_COMMENT_SENTENCES,MAX_COMMENT_SENTENCES))),           
             )
             for _ in range(count)
         ]
-        return len(Comment.objects.bulk_create(comments,batch_size=BATCH_SIZE))
+        created=Comment.objects.bulk_create(comments,batch_size=BATCH_SIZE)
+        for comment in created:
+            comment.created_at=random_moment(comment.post.created_at, now)
+        Comment.objects.bulk_update(created, ["created_at"], batch_size=BATCH_SIZE)
+        return len(created)
     
                 
                 
