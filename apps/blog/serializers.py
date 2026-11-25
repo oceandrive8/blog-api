@@ -20,7 +20,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Tag
+        model = User
         fields = ['id', 'first_name', 'last_name']
 
 
@@ -35,9 +35,14 @@ class PostListSerializer(serializers.ModelSerializer):
         fields = ['id','title','slug','author', 'category', 'tags', 'comments_count', 'created_at',]
 
 
-class PostDetailSerializer(serializers.ModelSerializer):
+class PostDetailSerializer(PostListSerializer):
+    comments_count = serializers.IntegerField(read_only=True)
+
     class Meta(PostListSerializer.Meta):
-        fields = PostListSerializer.Meta.fields + ["body", "updated_at"]
+        fields = PostListSerializer.Meta.fields + [
+            'body',
+            'updated_at',
+        ]
 
 
 class PostWriteSerializer(serializers.ModelSerializer):
