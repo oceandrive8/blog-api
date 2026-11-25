@@ -2,11 +2,20 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from pathlib import Path
+
+from decouple import AutoConfig
+
+# Own instance, searching in settings/ where .env lives.
+env_config = AutoConfig(search_path=str(Path(__file__).resolve().parent / "settings"))
 
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings.env.local')
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE",
+        f"settings.env.{env_config('BLOG_ENV_ID', default='local')}",
+    )
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

@@ -10,11 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
-
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 
 from settings.conf import *
+from apps.auths.constants import ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME
 
 # ----------------------------------------------
 # Path
@@ -41,6 +41,7 @@ DJANGO_AND_THIRD_PARTY_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
 ]
 PROJECT_APPS = [
     "apps.auths.apps.AuthsConfig",
@@ -228,3 +229,40 @@ UNFOLD = {
         },
     ],
 }
+
+
+# ----------------------------------------------
+# REST_FRAMEWORK and SIMPLE_JWT
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
+    "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+
+# ----------------------------------------------
+# Redis(caches)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": BLOG_REDIS_URL,
+    }
+}
+
+
+# ----------------------------------------------
+# Celery and email
+
+CELERY_BROKER_URL = BLOG_REDIS_URL
+DEFAULT_FROM_EMAIL = "noreply@blog.local"

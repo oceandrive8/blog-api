@@ -6,4 +6,3 @@ db.sqlite3
 settings/.env
 logs/*
 !logs/.gitkeep
-
