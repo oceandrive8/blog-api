@@ -311,3 +311,83 @@ Queries that take arguments (a slug, an email, a number of days) get sample valu
 - Queries 40-44 **change the data**. The command runs them only with `--number`. To get fresh data, run `python manage.py seed --clear`.
 - Every read query (1-39 and 48-50) makes exactly 1 SQL query. Queries 45, 46 and 47 are limited to 1, 2 and 2 SQL queries, and they use `select_related` and `prefetch_related` to avoid the N+1 problem.
 - `settings/env/local.py` logs every SQL query to the terminal, so you may see extra SQL lines in the command output. This is normal.
+
+
+## API
+
+Base URL: `http://localhost:8000/api/blog/v1`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/posts` | No | List published posts (paginated, filter with `?category=<slug>`) |
+| POST | `/posts` | Yes | Create a post |
+| GET | `/posts/{id}` | No | Post detail |
+| PATCH | `/posts/{id}` | Yes (author or staff) | Update a post |
+| DELETE | `/posts/{id}` | Yes (author or staff) | Delete a post |
+| GET | `/posts/{id}/comments` | No | List comments of a post |
+| POST | `/posts/{id}/comments` | Yes | Add a comment |
+| GET | `/categories` | No | List categories (cached for 10 minutes) |
+| GET | `/tags` | No | List tags (cached for 10 minutes) |
+
+Auth base URL: `http://localhost:8000/api/auths/v1`  <!-- TODO: check the prefix in settings/urls.py -->
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/token/refresh` | Get a new access token from a refresh token |
+| - | `/users`, `/users/{id}` | User endpoints (`UserViewSet`) <!-- TODO: list the real actions --> |
+
+### How to get a token
+
+```bash
+# TODO: replace the URL and fields with your real login/register endpoint
+curl -X POST http://localhost:8000/api/auths/v1/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "your-password"}'
+```
+
+The response contains an `access` and a `refresh` token. Send the access token with every protected request:
+
+```bash
+curl -X POST http://localhost:8000/api/blog/v1/posts \
+  -H "Authorization: Bearer <access>" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My post", "body": "Text"}'
+```
+
+When the access token expires:
+
+```bash
+curl -X POST http://localhost:8000/api/auths/v1/token/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "<refresh>"}'
+```
+
+## Redis and Celery
+
+Redis is used for caching and as the Celery broker.
+
+```bash
+# first time
+docker run -d --name blog-redis -p 6379:6379 redis
+
+# later
+docker start blog-redis
+
+# check
+docker exec -it blog-redis redis-cli ping    # PONG
+```
+
+Start the Celery worker (project root, venv active, Redis running):
+
+```bash
+celery -A settings worker -l info
+```
+
+Start the server in another terminal:
+
+```bash
+python manage.py runserver
+```
+
+Check the cache: call `GET /categories`, then run
+`docker exec -it blog-redis redis-cli KEYS "*"`. You should see `:1:categories`.
