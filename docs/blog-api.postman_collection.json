@@ -1,0 +1,92 @@
+{
+  "info": {
+    "name": "Blog API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api/blog/v1" },
+    { "key": "authUrl", "value": "http://localhost:8000/api/auths/v1" },
+    { "key": "token", "value": "" },
+    { "key": "refresh", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (TODO: fix URL and body)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\": \"user@example.com\", \"password\": \"your-password\"}" },
+            "url": "{{authUrl}}/users/login"
+          }
+        },
+        {
+          "name": "Token refresh",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"refresh\": \"{{refresh}}\"}" },
+            "url": "{{authUrl}}/token/refresh"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/posts" } },
+        { "name": "List by category", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/posts?category=python" } },
+        { "name": "Detail", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/posts/1" } },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"title\": \"My post\", \"body\": \"Text\"}" },
+            "url": "{{baseUrl}}/posts"
+          }
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"title\": \"New title\"}" },
+            "url": "{{baseUrl}}/posts/1"
+          }
+        },
+        { "name": "Delete", "request": { "method": "DELETE", "url": "{{baseUrl}}/posts/1" } }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/posts/1/comments" } },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"body\": \"Nice post\"}" },
+            "url": "{{baseUrl}}/posts/1/comments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories and Tags",
+      "item": [
+        { "name": "Categories - List", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/categories" } },
+        { "name": "Tags - List", "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/tags" } }
+      ]
+    }
+  ]
+}
